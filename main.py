@@ -504,7 +504,7 @@ class StockAnalysisPipeline:
             stock_codes = self.config.stock_list
         
         # 自动选股模式：从全市场筛选符合条件的股票
-        if getattr(self.config, 'auto_screen_enabled', False):
+        if os.getenv('AUTO_SCREEN_ENABLED', '').lower() == 'true':
             logger.info("自动选股模式已启用，正在筛选股票...")
             try:
                 screener = StockScreener(
