@@ -42,6 +42,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from feishu_doc import FeishuDocManager
 
 from config import get_config, Config
+from screener import StockScreener
 from storage import get_db, DatabaseManager
 from data_provider import DataFetcherManager
 from data_provider.akshare_fetcher import AkshareFetcher, RealtimeQuote, ChipDistribution
@@ -501,6 +502,26 @@ class StockAnalysisPipeline:
         # 使用配置中的股票列表
         if stock_codes is None:
             stock_codes = self.config.stock_list
+        
+        # 自动选股模式：从全市场筛选符合条件的股票
+        if getattr(self.config, 'auto_screen_enabled', False):
+            logger.info("自动选股模式已启用，正在筛选股票...")
+            try:
+                screener = StockScreener(
+                    max_stocks=getattr(self.config, 'auto_screen_max_stocks', 300),
+                    min_market_cap=getattr(self.config, 'auto_screen_min_market_cap', 50),
+                    max_market_cap=getattr(self.config, 'auto_screen_max_market_cap', 500),
+                    min_increase_pct=getattr(self.config, 'auto_screen_min_increase_pct', 2.0),
+                    min_volume_ratio=getattr(self.config, 'auto_screen_min_volume_ratio', 1.5),
+                )
+                screened = screener.screen()
+                if screened:
+                    stock_codes = screened
+                    logger.info(f"自动选股完成，筛选出 {len(stock_codes)} 只股票")
+                else:
+                    logger.warning("自动选股未返回任何结果，使用默认自选股")
+            except Exception as e:
+                logger.error(f"自动选股失败: {e}，使用默认自选股")
         
         if not stock_codes:
             logger.error("未配置自选股列表，请在 .env 文件中设置 STOCK_LIST")
