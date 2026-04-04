@@ -95,7 +95,14 @@ class Config:
     debug: bool = False
     
     # === 定时任务配置 ===
-    schedule_enabled: bool = False            # 是否启用定时任务
+    schedule_enabled: bool = False
+    # === 自动选股配置 ===
+    auto_screen_enabled: bool = False            # 是否启用自动选股（全市场筛选）
+    auto_screen_max_stocks: int = 300            # 自动选股最大数量
+    auto_screen_min_market_cap: int = 50         # 最小市值（亿元）
+    auto_screen_max_market_cap: int = 500        # 最大市值（亿元）
+    auto_screen_min_increase_pct: float = 2.0   # 最小涨幅筛选（%）
+    auto_screen_min_volume_ratio: float = 1.5    # 最小量比筛选            # 是否启用定时任务
     schedule_time: str = "18:00"              # 每日推送时间（HH:MM 格式）
     market_review_enabled: bool = True        # 是否启用大盘复盘
     
