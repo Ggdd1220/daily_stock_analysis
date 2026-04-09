@@ -126,3 +126,64 @@ jobs:
             echo "生成的报告:"
             ls -la reports/
           fi
+ # ========== 小明量化系统：提取信号并推送 ==========
+  - name: 提取并推送交易信号到Railway
+    if: always()
+    run: |
+      echo "=== 提取交易信号 ==="
+      
+      # 查找最新报告
+      REPORT=$(find . -name "*.md" -o -name "*.json" 2>/dev/null | grep -i report | head -1)
+      if [ -z "$REPORT" ]; then
+        REPORT=$(find . -name "*.md" 2>/dev/null | head -1)
+      fi
+      
+      if [ -n "$REPORT" ] && [ -f "$REPORT" ]; then
+        echo "分析报告: $REPORT"
+        
+        # 提取股票代码并构建信号JSON
+        python3 -c "
+import re, json, os
+from datetime import datetime
+
+# 读取报告
+report_path = '$REPORT'
+with open(report_path, 'r', errors='ignore') as f:
+    content = f.read()
+
+# 提取6位数字代码
+codes = set(re.findall(r'\b(\d{6})\b', content))
+signals = []
+for code in list(codes)[:20]:
+    prefix = 'sh' if code.startswith(('6','5')) else 'sz'
+    signals.append({
+        'order_id': f'ai_{datetime.now().strftime(\"%Y%m%d\")}_{code}',
+        'action': 'BUY',
+        'code': prefix + code,
+        'name': '',
+        'entry_price_min': 0,
+        'entry_price_max': 0,
+        'position_pct': 20,
+        'reason': '大胖AI每日分析',
+        'date': datetime.now().strftime('%Y-%m-%d')
+    })
+
+if signals:
+    with open('signals.json', 'w') as f:
+        json.dump({'signals': signals}, f, ensure_ascii=False)
+    print(f'生成了 {len(signals)} 个信号')
+else:
+    print('未提取到有效信号')
+"
+        
+        if [ -f signals.json ]; then
+          echo "发送到 Railway..."
+          curl -s -X POST "https://astock-mvp-production.up.railway.app/api/signals" \
+            -H "Content-Type: application/json" \
+            -d @signals.json
+          echo ""
+          echo "✅ 信号推送完成"
+        fi
+      else
+        echo "未找到报告文件，跳过信号推送"
+      fi
