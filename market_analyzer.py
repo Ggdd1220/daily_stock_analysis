@@ -528,7 +528,7 @@ class MarketAnalyzer:
 if __name__ == "__main__":
     import sys
 from macro_strategy import MacroStrategyMonitor
-    sys.path.insert(0, '.')
+        sys.path.insert(0, '.')
     
     logging.basicConfig(
         level=logging.INFO,
