@@ -727,6 +727,19 @@ def run_market_review(notifier: NotificationService, analyzer=None, search_servi
         
         # 执行复盘
         review_report = market_analyzer.run_daily_review()
+
+        
+        # ====== 第三章：宏观策略（资金流+舆情）======
+        logger.info("开始生成宏观策略报告...")
+        try:
+            from macro_strategy import MacroStrategyMonitor
+            macro_monitor = MacroStrategyMonitor()
+            macro_report = macro_monitor.generate_macro_report()
+            macro_chapter = macro_monitor.format_markdown_report(macro_report)
+            review_report = review_report + "\n\n" + macro_chapter
+            logger.info(f"宏观策略报告生成完成: 评分={macro_report.composite_score}")
+        except Exception as e:
+            logger.warning(f"宏观策略报告生成失败: {e}")
         
         if review_report:
             # 保存报告到文件
