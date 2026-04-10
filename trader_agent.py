@@ -103,7 +103,7 @@ class TraderReport:
 
 class TraderAgent:
     """
-    Model 4: 鍗庡皵琛椾氦鏄撳憳鍐崇瓥妯″潡
+    Model 4: 鍗庡皵琛椾氦鏄撳憳鍐崇瓥妯"潡
     
     杈撳叆锛?    - screener_result: Model 2 绛涢€夌粨鏋滐紙鍊欓€夎偂绁ㄥ垪琛級
     - market_analysis: Model 3 澶х洏鍒嗘瀽缁撹
@@ -313,7 +313,7 @@ class TraderAgent:
                     logger.error("浜ゆ槗鍛樺喅绛栧け璐ワ紝杩斿洖绌轰粨")
                     return self._empty_report()
             except Exception as e:
-                logger.warning(f"妯″瀷璋冪敤寮傚父锛堢{attempt+1}娆★級锛歿e}")
+                logger.warning(f"妯"瀷璋冪敤寮傚父锛堢{attempt+1}娆★級锛歿e}")
                 if attempt == max_retries - 1:
                     return self._empty_report()
         
@@ -325,7 +325,7 @@ class TraderAgent:
             date=datetime.now().strftime("%Y-%m-%d"),
             decision="HOLD",
             stocks=[],
-            market_view="妯″瀷璋冪敤寮傚父锛屾殏鏃犲喅绛?,
+            market_view="妯"瀷璋冪敤寮傚父锛屾殏鏃犲喅绛?,
             risk_level="鏈煡",
             total_position=0,
             raw_reasoning="",
@@ -391,7 +391,7 @@ class TraderAgent:
         lines.extend([
             f"",
             f"**{'-'*30}**",
-            f"鈿狅笍 浠ヤ笂浠呬緵鍙傝€冿紝鑲″競鏈夐闄╋紝鎶曡祫闇€璋ㄦ厧",
+            f"鈿狅笍 浠ヤ笂浠呬緵鍙傝€冿紝鑲"競鏈夐闄╋紝鎶曡祫闇€璋ㄦ厧",
             f"",
             f"鈥斺€?Model 4 | Jack Chen锛?0骞村崕灏旇浜ゆ槗鍛橈級",
         ])
