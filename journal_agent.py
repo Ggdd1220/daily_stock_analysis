@@ -132,7 +132,7 @@ class JournalAgent:
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
 
     def _new_id(self) -> str:
-        """鐢熸垚鍞竴ID"""
+        """鐢熸垚鍞竴ID"""
         return f"{datetime.now().strftime('%Y%m%d%H%M%S')}{random.randint(1000,9999)}"
 
     # ========== 浜ゆ槗璁板綍 ==========
