@@ -735,7 +735,7 @@ def run_market_review(notifier: NotificationService, analyzer=None, search_servi
             from macro_strategy import MacroStrategyMonitor
             macro_monitor = MacroStrategyMonitor()
             macro_report = macro_monitor.generate_macro_report()
-            macro_chapter = macro_monitor.format_markdown_report(macro_report)
+            macro_chapter = macro_monitor.format_markdown_report(macro_report) if macro_report else "[第三章宏观策略报告：无数据]"
             review_report = review_report + "\n\n" + macro_chapter
             logger.info(f"宏观策略报告生成完成: 评分={macro_report.composite_score}")
         except Exception as e:
