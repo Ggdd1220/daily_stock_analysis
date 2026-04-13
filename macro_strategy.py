@@ -332,124 +332,66 @@ class MacroStrategyMonitor:
         logger.info(f"宏观报告: 综合={report.composite_score:.0f}, 风险={report.risk_level}")
         return report
 
-    def format_markdown_report(self, report: MacroReport) -> str:
-        try:
-        lines = [
-            "## 🧭 第三章：前瞻信号与\"聪明钱\"动向",
-            "",
-            f"> 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M')} | "
-            f"综合评分: **{report.composite_score:.0f}/100** | 风险等级: **{report.risk_level}**",
-            "",
-        ]
-        # 美债
-        if report.us_yield:
-            u = report.us_yield
-            lines.extend([
-                "### 📌 美债之锚：美国10年期国债收益率",
-                "",
-                f"| 指标 | 数值 |",
-                f"|------|------|",
-                f"| 10年期收益率 | **{u.yield_10y:.3f}%** |",
-                f"| 2年期收益率 | {u.yield_2y:.3f}% |",
-                f"| 10Y-2Y利差 | {u.yield_spread:+.3f}% |",
-                f"| 1日变化 | {u.change_bps_1d:+.1f} bp |",
-                f"| 多空信号 | **{u.signal}** |",
-                "",
-                f"**今日研判**: 当前收益率指向市场风格为 **{'风险开启' if u.yield_10y > 4.4 else '风险规避'}**，"
-                f"{'有利于科技/成长股' if u.yield_10y > 4.4 else '资金倾向于流向防御板块'}。",
-                ""
-            ])
-        # 北向资金
-        if report.north_money:
-            n = report.north_money
-            direction = "净流入" if n.north_net_inflow >= 0 else "净流出"
-            emoji = "🟢" if n.north_net_inflow >= 0 else "🔴"
-            trend = ""
-            if len(n.history_5d) >= 2:
-                trend = "↑" if n.history_5d[0] > n.history_5d[1] else "↓"
-            lines.extend([
-                "### 💰 北向资金（聪明钱风向标）",
-                "",
-                f"| 指标 | 数值 |",
-                f"|------|------|",
-                f"| 今日{direction} | {emoji} **{n.north_net_inflow:+.2f}亿元** {trend} |",
-                f"| 沪股通 | {'🟢' if n.north_sh_net_inflow >= 0 else '🔴'} {n.north_sh_net_inflow:+.2f}亿元 |",
-                f"| 深股通 | {'🟢' if n.north_sz_net_inflow >= 0 else '🔴'} {n.north_sz_net_inflow:+.2f}亿元 |",
-            ])
-            if n.history_5d:
-                history_str = " / ".join([f"{v:+.0f}" for v in n.history_5d[:5]])
-                lines.append(f"| 近5日（亿元） | {history_str} |")
-            lines.extend([
-                "",
-                f"**解读**: {'北向资金今日净买入，显示外资对A股乐观' if n.north_net_inflow >= 0 else '北向资金今日净卖出，需警惕外资撤退风险'}。",
-                ""
-            ])
-        # 融资融券
-        if report.margin:
-            m = report.margin
-            direction = "增加" if m.margin_balance_change >= 0 else "减少"
-            emoji = "🟢" if m.margin_balance_change >= 0 else "🔴"
-            lines.extend([
-                "### 📊 融资融券（杠杆资金情绪）",
-                "",
-                f"| 指标 | 数值 |",
-                f"|------|------|",
-                f"| 融资余额 | **{m.margin_balance:.2f}亿元** |",
-                f"| 余额变化 | {emoji} {m.margin_balance_change:+.2f}亿元（{direction}） |",
-                f"| 融券余额 | {m.short_balance:.2f}亿元 |",
-                "",
-                f"**解读**: 融资余额{direction}，显示{'杠杆资金做多情绪升温' if m.margin_balance_change >= 0 else '融资客减仓，市场情绪偏谨慎'}。",
-                ""
-            ])
-        # ETF申赎
-        if report.etf_flow:
-            e = report.etf_flow
-            direction = "净申购" if e.etf_total_net_inflow >= 0 else "净赎回"
-            emoji = "🟢" if e.etf_total_net_inflow >= 0 else "🔴"
-            lines.extend([
-                "### 📈 ETF申赎（机构资金流向）",
-                "",
-                f"| 指标 | 数值 |",
-                f"|------|------|",
-                f"| 整体ETF | {emoji} {e.etf_total_net_inflow:+.2f}亿元（{direction}） |",
-                "",
-                f"**解读**: ETF{direction}，{'资金持续流入市场，机构看多' if e.etf_total_net_inflow >= 0 else '资金赎回压力增大，机构偏谨慎'}。",
-                ""
-            ])
-        # 主力资金
-        if report.main_flow:
-            mf = report.main_flow
-            direction = "净流入" if mf.main_net_inflow >= 0 else "净流出"
-            emoji = "🟢" if mf.main_net_inflow >= 0 else "🔴"
-            lines.extend([
-                "### 🔥 主力资金（超大单+大单）",
-                "",
-                f"| 指标 | 数值 |",
-                f"|------|------|",
-                f"| 主力净流入 | {emoji} **{mf.main_net_inflow:+.2f}亿元** |",
-                f"| 超大单 | {'🟢' if mf.super_net_inflow >= 0 else '🔴'} {mf.super_net_inflow:+.2f}亿元 |",
-                f"| 大单 | {'🟢' if mf.large_net_inflow >= 0 else '🔴'} {mf.large_net_inflow:+.2f}亿元 |",
-                "",
-                f"**解读**: 主力资金{direction}，{'机构主力主动买入，市场强势' if mf.main_net_inflow >= 0 else '主力资金出逃，警惕短期调整风险'}。",
-                ""
-            ])
-        # 综合策略
-        lines.extend([
-            "### 🎯 综合策略建议",
-            "",
-            f"**综合评分**: {report.composite_score:.0f}/100 | **风险等级**: {report.risk_level}",
-            "",
-            f"**今日操作联动建议**:",
-            f"{report.strategy_tip}",
-            "",
-            "---",
-            ""
-        ])
-        return "\n".join(lines)
+    def _sg(self, obj, attr, default="N/A"):
+        """Safe getattr - returns default if attribute is None or missing"""
+        if obj is None:
+            return default
+        val = getattr(obj, attr, None)
+        if val is None:
+            return default
+        return val
+    
 
+    def format_markdown_report(self, report) -> str:
+        """格式化宏观策略报告为Markdown"""
+        try:
+            lines = [
+                "\n## 第三章 宏观策略与市场情绪",
+                "",
+                "### 一、宏观信号",
+                "",
+                "**美债10年期收益率**: " + str(self._sg(report, 'bond_yield_info', '获取失败')) + " | " + str(self._sg(report, 'bond_signal', '获取失败')),
+                "",
+                "**北向资金**: 今日" + str(self._sg(report, 'north_money_today', '获取失败')) + " | 近5日" + str(self._sg(report, 'north_money_5d', '获取失败')),
+                "",
+                "**融资融券余额**: " + str(self._sg(report, 'margin_balance', '获取失败')),
+                "",
+                "**ETF申赎净额**: " + str(self._sg(report, 'etf_net', '获取失败')),
+                "",
+                "**主力资金流**: " + str(self._sg(report, 'main_money_flow', '获取失败')),
+                "",
+            ]
+            
+            # 综合评分
+            score = self._sg(report, 'comprehensive_score', None)
+            if score is None or score == "N/A":
+                score_str = "获取失败"
+            else:
+                try:
+                    score_str = f"**{score.score}/100**" if hasattr(score, 'score') else str(score)
+                except:
+                    score_str = str(score)
+            
+            risk = self._sg(report, 'risk_level', '获取失败')
+            action = self._sg(report, 'action', '获取失败')
+            
+            lines.extend([
+                "**综合评分**: " + score_str + " | 风险等级: **" + str(risk) + "** | 操作建议: **" + str(action) + "**",
+                "",
+                "### 二、市场情绪",
+                "",
+                str(self._sg(report, 'market_review_section', '获取失败')),
+                "",
+                "### 三、热点板块",
+                "",
+                str(self._sg(report, 'hot_sector_section', '获取失败')),
+            ])
+            
+            return "\n".join(lines)
+            
         except Exception as e:
-            logger.warning(f"format_markdown_report error: {e}")
-            return "[第三章宏观策略报告生成失败]\n"
+            logger.warning(f"Format macro report error: {e}")
+            return "[第三章宏观策略报告生成失败]"
 
     def _calculate_composite_score(self, report: MacroReport) -> float:
         score = 50.0
