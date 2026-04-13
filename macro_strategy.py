@@ -333,6 +333,7 @@ class MacroStrategyMonitor:
         return report
 
     def format_markdown_report(self, report: MacroReport) -> str:
+        try:
         lines = [
             "## 🧭 第三章：前瞻信号与\"聪明钱\"动向",
             "",
@@ -510,6 +511,10 @@ class MacroStrategyMonitor:
                 tips.append("📉 信号偏弱，等待企稳信号，控制仓位")
         return "\n".join(tips) if tips else "⚖️ 暂无明确信号，维持观望"
 
+
+        except Exception as e:
+            logger.warning(f"format_markdown_report error: {e}")
+            return "[第三章宏观策略报告生成失败]\n"
 
 def get_macro_report() -> str:
     """获取宏观策略报告（快捷函数）"""
