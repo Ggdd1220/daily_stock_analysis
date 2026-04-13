@@ -445,6 +445,10 @@ class MacroStrategyMonitor:
             "---",
             ""
         ])
+        except Exception as e:
+            logger.warning(f"format_markdown_report error: {e}")
+            return "[第三章宏观策略报告生成失败]\n"
+
         return "\n".join(lines)
 
     def _calculate_composite_score(self, report: MacroReport) -> float:
