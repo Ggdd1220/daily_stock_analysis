@@ -11,6 +11,7 @@ A股自选股智能分析系统 - AI分析层
 """
 
 import json
+import re
 import logging
 import time
 from dataclasses import dataclass
@@ -1020,6 +1021,13 @@ class GeminiAnalyzer:
         try:
             # 清理响应文本：移除 markdown 代码块标记
             cleaned_text = response_text
+
+            # 移除 AI 推理标签（think step by step 等）
+            cleaned_text = re.sub(r'<回答>.*?</回答>', '', cleaned_text, flags=re.DOTALL)
+            cleaned_text = re.sub(r'<think>.*?</think>', '', cleaned_text, flags=re.DOTALL)
+            cleaned_text = re.sub(r'<think>[\s\S]*?</think>', '', cleaned_text)
+            cleaned_text = re.sub(r'\(think\)[\s\S]*?\(/think\)', '', cleaned_text)
+
             if '```json' in cleaned_text:
                 cleaned_text = cleaned_text.replace('```json', '').replace('```', '')
             elif '```' in cleaned_text:
@@ -1134,8 +1142,8 @@ class GeminiAnalyzer:
             trend = '看空'
             advice = '卖出'
         
-        # 截取前500字符作为摘要
-        summary = response_text[:500] if response_text else '无分析结果'
+        # 不要使用原始输出作为摘要（可能包含推理过程），使用安全回退
+        summary = 'AI分析结果格式异常，建议稍后查看完整报告'
         
         return AnalysisResult(
             code=code,
