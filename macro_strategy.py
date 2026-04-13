@@ -127,7 +127,7 @@ class MacroStrategyMonitor:
             return None
         try:
             import akshare as ak
-            data = ak.stock_hsgt_north_cash_flow(symbol="北向资金")
+            data = ak.stock_hsgt_fund_flow_summary_em()
             today = data.iloc[0]
             history_5d = []
             for i in range(min(5, len(data))):
@@ -165,7 +165,7 @@ class MacroStrategyMonitor:
             return None
         try:
             import akshare as ak
-            data = ak.margin_detail(symbol="融资融券余额")
+            data = ak.stock_margin_detail_sse()
             if data is None or data.empty:
                 return None
             today = data.iloc[0]
@@ -202,7 +202,7 @@ class MacroStrategyMonitor:
             return None
         try:
             import akshare as ak
-            data = ak.etf_fund_flow(ETF="全部")
+            data = ak.fund_etf_fund_daily_em()
             if data is None or data.empty:
                 return None
             today = data.iloc[0]
@@ -227,7 +227,7 @@ class MacroStrategyMonitor:
             return None
         try:
             import akshare as ak
-            data = ak.stock_market_fund_flow(indicator="今日")
+            data = ak.stock_main_fund_flow()
             if data is None or data.empty:
                 return None
             today = data.iloc[0]
@@ -275,7 +275,7 @@ class MacroStrategyMonitor:
             yield_2y = 0.0
             yield_spread = 0.0
             try:
-                ticker2y = yf.Ticker("^UST2Y")
+                ticker2y = yf.Ticker("^IRX")
                 data2y = ticker2y.history(period="5d")
                 if not data2y.empty:
                     yield_2y = float(data2y['Close'].iloc[-1])
@@ -350,7 +350,7 @@ class MacroStrategyMonitor:
                 "",
                 "### 一、宏观信号",
                 "",
-                "**美债10年期收益率**: " + str(self._sg(report, 'bond_yield_info', '获取失败')) + " | " + str(self._sg(report, 'bond_signal', '获取失败')),
+                "**美债10年期收益率**: " + str(self._sg(report, 'yield_10y', '获取失败')) + " | " + str(self._sg(report, 'signal', '获取失败')),
                 "",
                 "**北向资金**: 今日" + str(self._sg(report, 'north_money_today', '获取失败')) + " | 近5日" + str(self._sg(report, 'north_money_5d', '获取失败')),
                 "",
