@@ -737,7 +737,8 @@ def run_market_review(notifier: NotificationService, analyzer=None, search_servi
             macro_report = macro_monitor.generate_macro_report()
             macro_chapter = macro_monitor.format_markdown_report(macro_report) if macro_report else "[第三章宏观策略报告：无数据]"
             review_report = review_report + "\n\n" + macro_chapter
-            logger.info(f"宏观策略报告生成完成: 评分={getattr(macro_report, "composite_score", "N/A")}")
+            score = getattr(macro_report, "composite_score", "N/A") if macro_report else "N/A"
+            logger.info("审查者章节生成完成: 评分=" + score)
         except Exception as e:
             logger.warning(f"宏观策略报告生成失败: {e}")
         
