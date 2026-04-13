@@ -445,11 +445,11 @@ class MacroStrategyMonitor:
             "---",
             ""
         ])
+        return "\n".join(lines)
+
         except Exception as e:
             logger.warning(f"format_markdown_report error: {e}")
             return "[第三章宏观策略报告生成失败]\n"
-
-        return "\n".join(lines)
 
     def _calculate_composite_score(self, report: MacroReport) -> float:
         score = 50.0
@@ -515,10 +515,6 @@ class MacroStrategyMonitor:
                 tips.append("📉 信号偏弱，等待企稳信号，控制仓位")
         return "\n".join(tips) if tips else "⚖️ 暂无明确信号，维持观望"
 
-
-        except Exception as e:
-            logger.warning(f"format_markdown_report error: {e}")
-            return "[第三章宏观策略报告生成失败]\n"
 
 def get_macro_report() -> str:
     """获取宏观策略报告（快捷函数）"""
