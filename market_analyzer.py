@@ -251,15 +251,25 @@ class MarketAnalyzer:
             logger.info("[大盘] 获取北向资金...")
             
             # 获取北向资金数据
-            df = ak.stock_hsgt_north_net_flow_in_em(symbol="北上")
-            
-            if df is not None and not df.empty:
-                # 取最新一条数据
-                latest = df.iloc[-1]
-                if '当日净流入' in df.columns:
-                    overview.north_flow = float(latest['当日净流入']) / 1e8  # 转为亿元
-                elif '净流入' in df.columns:
-                    overview.north_flow = float(latest['净流入']) / 1e8
+            # 使用新版 AkShare API: stock_hsgt_fund_flow_summary_em
+            # 旧 API stock_hsgt_north_net_flow_in_em 已在 akshare >= 1.18 中移除
+            try:
+                df = ak.stock_hsgt_fund_flow_summary_em()
+                if df is not None and not df.empty:
+                    # 取最新一条北上资金数据（第二行为北上数据）
+                    north_data = df[df['股票'].str.contains('北上', na=False)]
+                    if not north_data.empty:
+                        latest = north_data.iloc[-1]
+                        # 尝试获取净流入列（列名因版本而异）
+                        for col in ['成交额', '当天成交额', '净流入', '当天净流入']:
+                            if col in df.columns:
+                                val = latest.get(col, 0)
+                                if val is not None and val != '-':
+                                    overview.north_flow = float(val) / 1e8
+                                    break
+                        logger.info(f"[大盘] 北向资金: {overview.north_flow:.2f}亿")
+            except Exception as north_e:
+                logger.debug(f"[大盘] 北向资金API不可用: {north_e}")
                     
                 logger.info(f"[大盘] 北向资金净流入: {overview.north_flow:.2f}亿")
                 
