@@ -7,6 +7,8 @@ on:
   
   # 手动触发
   workflow_dispatch:
+  # API触发 (repository_dispatch)
+  repository_dispatch:
     inputs:
       mode:
         description: '运行模式'
