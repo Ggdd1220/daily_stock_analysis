@@ -128,24 +128,24 @@ class MacroStrategyMonitor:
         try:
             import akshare as ak
             data = ak.stock_hsgt_fund_flow_summary_em()
-            today = data.iloc[0]
+            # 筛选北向数据（资金方向='北向'）
+            north_df = data[data['资金方向'] == '北向'] if '资金方向' in data.columns else data
+            # 按板块拆分
+            sh_df = north_df[north_df['板块'].str.contains('沪股通', na=False)] if '板块' in north_df.columns else north_df
+            sz_df = north_df[north_df['板块'].str.contains('深股通', na=False)] if '板块' in north_df.columns else north_df
+            # 成交净买额（单位：亿元）
+            sh_net = float(sh_df['成交净买额'].sum()) if len(sh_df) > 0 else 0.0
+            sz_net = float(sz_df['成交净买额'].sum()) if len(sz_df) > 0 else 0.0
+            net_inflow_today = sh_net + sz_net
             history_5d = []
             for i in range(min(5, len(data))):
                 row = data.iloc[i]
-                net_val = self._safe_get_field(row, ['当日成交净买额', '北向资金净流入', 'net_inflow', '当日净买入'])
+                net_val = row.get('成交净买额') or row.get('当日成交净买额')
                 if net_val is not None:
                     try:
                         history_5d.append(float(net_val))
                     except:
                         pass
-            net_inflow_today = history_5d[0] if history_5d else 0.0
-            sh_net = self._safe_get_field(today, ['沪股通', 'sh_net']) or 0.0
-            sz_net = self._safe_get_field(today, ['深股通', 'sz_net']) or 0.0
-            try:
-                sh_net = float(sh_net)
-                sz_net = float(sz_net)
-            except:
-                sh_net = sz_net = 0.0
             result = NorthMoneyFlow(
                 date=str(date.today()),
                 north_net_inflow=net_inflow_today,
@@ -153,7 +153,7 @@ class MacroStrategyMonitor:
                 north_sz_net_inflow=sz_net,
                 history_5d=history_5d
             )
-            logger.info(f"北向资金: {result.north_net_inflow:+.2f}亿元")
+            logger.info(f"北向资金: {result.north_net_inflow:+.2f}亿元 (沪股通:{sh_net:+.2f} 深股通:{sz_net:+.2f})")
             return result
         except Exception as e:
             logger.warning(f"获取北向资金失败: {e}")
@@ -165,32 +165,25 @@ class MacroStrategyMonitor:
             return None
         try:
             import akshare as ak
+            # 汇总所有标的的融资余额（单位：万元 → 亿元）
             data = ak.stock_margin_detail_sse()
             if data is None or data.empty:
                 return None
-            today = data.iloc[0]
-            margin_balance = self._safe_get_field(today, ['融资余额', 'margin_balance']) or 0.0
-            try:
-                margin_balance = float(margin_balance) / 10000
-            except:
-                margin_balance = 0.0
-            margin_change = self._safe_get_field(today, ['融资余额变化', 'margin_balance_change', '余额变化']) or 0.0
-            try:
-                margin_change = float(margin_change) / 10000
-            except:
-                margin_change = 0.0
-            short_balance = self._safe_get_field(today, ['融券余额', 'short_balance']) or 0.0
-            try:
-                short_balance = float(short_balance) / 10000
-            except:
-                short_balance = 0.0
+            # 融资余额（合计）
+            margin_balance = float(data['融资余额'].sum()) / 10000
+            # 融资余额变化 = 今日买入 - 今日偿还（估算）
+            margin_buy = float(data['融资买入额'].sum()) / 10000
+            margin_repay = float(data['融资偿还额'].sum()) / 10000
+            margin_change = margin_buy - margin_repay
+            # 融券余额（合计）
+            short_balance = float(data['融券余量金额'].sum()) / 10000 if '融券余量金额' in data.columns else 0.0
             result = MarginData(
                 date=str(date.today()),
                 margin_balance=margin_balance,
                 margin_balance_change=margin_change,
                 short_balance=short_balance
             )
-            logger.info(f"融资余额: {result.margin_balance:.2f}亿元, 变化: {result.margin_balance_change:+.2f}")
+            logger.info(f"融资余额: {result.margin_balance:.2f}亿元, 变化: {result.margin_balance_change:+.2f}亿元")
             return result
         except Exception as e:
             logger.warning(f"获取融资融券数据失败: {e}")
@@ -198,28 +191,10 @@ class MacroStrategyMonitor:
 
     # ---- 3. ETF申赎 ----
     def get_etf_fund_flow(self) -> Optional[ETFFundFlow]:
-        if not self._akshare_available:
-            return None
-        try:
-            import akshare as ak
-            data = ak.fund_etf_fund_daily_em()
-            if data is None or data.empty:
-                return None
-            today = data.iloc[0]
-            net_inflow = self._safe_get_field(today, ['净申购', 'net_inflow', '申购', 'ETF净流入']) or 0.0
-            try:
-                net_inflow = float(net_inflow)
-            except:
-                net_inflow = 0.0
-            result = ETFFundFlow(
-                date=str(date.today()),
-                etf_total_net_inflow=net_inflow
-            )
-            logger.info(f"ETF净申购: {result.etf_total_net_inflow:+.2f}亿元")
-            return result
-        except Exception as e:
-            logger.warning(f"获取ETF申赎数据失败: {e}")
-            return None
+        # akshare 当前无直接 ETF 申赎数据接口，etf_fund_flow 已移除
+        # 返回 None 不阻塞其他数据
+        logger.info("ETF申赎: 暂无可靠数据源（N/A）")
+        return None
 
     # ---- 4. 主力资金 ----
     def get_main_fund_flow(self) -> Optional[MainFundFlow]:
@@ -227,61 +202,49 @@ class MacroStrategyMonitor:
             return None
         try:
             import akshare as ak
-            data = ak.stock_main_fund_flow()
+            # stock_main_fund_flow 会卡住，改用 stock_market_fund_flow
+            data = ak.stock_market_fund_flow()
             if data is None or data.empty:
                 return None
             today = data.iloc[0]
-            main_net = self._safe_get_field(today, ['主力净流入', 'main_net_inflow', '主力净流入净额']) or 0.0
-            try:
-                main_net = float(main_net) / 10000
-            except:
-                main_net = 0.0
-            super_net = self._safe_get_field(today, ['超大单净流入', '超大单', 'super_net']) or 0.0
-            try:
-                super_net = float(super_net) / 10000
-            except:
-                super_net = 0.0
-            large_net = self._safe_get_field(today, ['大单净流入', '大单', 'large_net']) or 0.0
-            try:
-                large_net = float(large_net) / 10000
-            except:
-                large_net = 0.0
+            # API 返回值单位是元，除以 10000 转万元，再除 10000 转亿元（÷1亿）
+            main_net = float(today.get('主力净流入-净额', 0)) / 100000000
+            super_net = float(today.get('超大单净流入-净额', 0)) / 100000000
+            large_net = float(today.get('大单净流入-净额', 0)) / 100000000
             result = MainFundFlow(
                 date=str(date.today()),
                 main_net_inflow=main_net,
                 super_net_inflow=super_net,
                 large_net_inflow=large_net
             )
-            logger.info(f"主力资金: {result.main_net_inflow:+.2f}亿元")
+            logger.info(f"主力资金: {result.main_net_inflow:+.2f}亿元 (超大单:{super_net:+.2f} 大单:{large_net:+.2f})")
             return result
         except Exception as e:
             logger.warning(f"获取主力资金流失败: {e}")
             return None
 
-    # ---- 5. 美债收益率 ----
+        # ---- 5. 美债收益率 ----
     def get_us_treasury_yield(self) -> Optional[USYieldData]:
-        if not self._yfinance_available:
-            return None
         try:
-            import yfinance as yf
-            ticker = yf.Ticker("^TNX")
-            data = ticker.history(period="5d")
-            if data is None or data.empty:
-                return None
-            yield_10y = float(data['Close'].iloc[-1])
-            change_1d = 0.0
-            if len(data) >= 2:
-                change_1d = (data['Close'].iloc[-1] - data['Close'].iloc[-2]) * 100
-            yield_2y = 0.0
-            yield_spread = 0.0
-            try:
-                ticker2y = yf.Ticker("^IRX")
-                data2y = ticker2y.history(period="5d")
-                if not data2y.empty:
-                    yield_2y = float(data2y['Close'].iloc[-1])
-                    yield_spread = yield_10y - yield_2y
-            except:
-                pass
+            import requests
+            today_str = date.today().strftime('%Y-%m-%d')
+            # FRED 公开数据，无需 API Key
+            # 10年期国债收益率
+            url10 = f'https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10&vintage_date={today_str}'
+            r10 = requests.get(url10, timeout=8)
+            lines10 = r10.text.strip().split('\n')
+            last10 = lines10[-1].split(',')
+            yield_10y = float(last10[1])
+            # 2年期国债收益率
+            url2 = f'https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS2&vintage_date={today_str}'
+            r2 = requests.get(url2, timeout=8)
+            lines2 = r2.text.strip().split('\n')
+            last2 = lines2[-1].split(',')
+            yield_2y = float(last2[1])
+            yield_spread = yield_10y - yield_2y
+            # 1日变化（bp）
+            prev10 = float(lines10[-2].split(',')[1]) if len(lines10) >= 2 else yield_10y
+            change_1d = (yield_10y - prev10) * 100
             if yield_10y > 4.4:
                 signal = "风险偏好高 → 利好科技/成长股"
             elif yield_10y < 4.3:
@@ -293,10 +256,10 @@ class MacroStrategyMonitor:
                 yield_10y=yield_10y,
                 yield_2y=yield_2y,
                 yield_spread=yield_spread,
-                change_bps_1d=float(change_1d),
+                change_bps_1d=change_1d,
                 signal=signal
             )
-            logger.info(f"美债10Y: {result.yield_10y:.3f}% | {result.signal}")
+            logger.info(f"美债10Y: {result.yield_10y:.3f}% 2Y:{result.yield_2y:.3f}% 利差:{result.yield_spread:+.3f}% | {result.signal}")
             return result
         except Exception as e:
             logger.warning(f"获取美债数据失败: {e}")
