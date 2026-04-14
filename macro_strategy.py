@@ -200,30 +200,40 @@ class MacroStrategyMonitor:
     def get_main_fund_flow(self) -> Optional[MainFundFlow]:
         if not self._akshare_available:
             return None
+        data = None
         try:
-            import akshare as ak
-            # stock_main_fund_flow 会卡住，改用 stock_market_fund_flow
-            data = ak.stock_market_fund_flow()
-            if data is None or data.empty:
-                return None
-            today = data.iloc[0]
-            # API 返回值单位是元，除以 10000 转万元，再除 10000 转亿元（÷1亿）
-            main_net = float(today.get('主力净流入-净额', 0)) / 100000000
-            super_net = float(today.get('超大单净流入-净额', 0)) / 100000000
-            large_net = float(today.get('大单净流入-净额', 0)) / 100000000
-            result = MainFundFlow(
-                date=str(date.today()),
-                main_net_inflow=main_net,
-                super_net_inflow=super_net,
-                large_net_inflow=large_net
-            )
-            logger.info(f"主力资金: {result.main_net_inflow:+.2f}亿元 (超大单:{super_net:+.2f} 大单:{large_net:+.2f})")
-            return result
+            import akshare as ak, signal
+            def timeout_handler(signum, frame):
+                raise TimeoutError("API调用超时")
+            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(10)  # 10秒超时
+            try:
+                data = ak.stock_market_fund_flow()
+            finally:
+                signal.alarm(0)
+                signal.signal(signal.SIGALRM, old_handler)
+        except TimeoutError:
+            logger.warning("主力资金 API 调用超时（10秒），跳过")
+            return None
         except Exception as e:
             logger.warning(f"获取主力资金流失败: {e}")
             return None
+        if data is None or data.empty:
+            return None
+        today = data.iloc[0]
+        main_net = float(today.get('主力净流入-净额', 0)) / 100000000
+        super_net = float(today.get('超大单净流入-净额', 0)) / 100000000
+        large_net = float(today.get('大单净流入-净额', 0)) / 100000000
+        result = MainFundFlow(
+            date=str(date.today()),
+            main_net_inflow=main_net,
+            super_net_inflow=super_net,
+            large_net_inflow=large_net
+        )
+        logger.info(f"主力资金: {result.main_net_inflow:+.2f}亿元 (超大单:{super_net:+.2f} 大单:{large_net:+.2f})")
+        return result
 
-        # ---- 5. 美债收益率 ----
+    # ---- 5. 美债收益率 ----
     def get_us_treasury_yield(self) -> Optional[USYieldData]:
         try:
             import requests
