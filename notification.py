@@ -1151,6 +1151,8 @@ class NotificationService:
         """
         if not self._feishu_url:
             logger.warning("飞书 Webhook 未配置，跳过推送")
+            import os
+            logger.warning(f"[DEBUG] 环境变量 FEISHU_WEBHOOK_URL = {os.getenv('FEISHU_WEBHOOK_URL', '未设置')}")
             return False
         
         max_bytes = self._feishu_max_bytes  # 从配置读取，默认 20000 字节
