@@ -64,7 +64,7 @@ class Config:
     wechat_webhook_url: Optional[str] = None
     
     # 飞书 Webhook
-    feishu_webhook_url: Optional[str] = None
+    feishu_webhook_url: Optional[str] = os.getenv('FEISHU_WEBHOOK_URL')
     
     # Telegram 配置（需要同时配置 Bot Token 和 Chat ID）
     telegram_bot_token: Optional[str] = None  # Bot Token（@BotFather 获取）
